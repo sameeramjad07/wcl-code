@@ -1,0 +1,36 @@
+# Agentic-RIS Configuration
+
+system:
+  N_y: 64
+  N_z: 64
+  M_antennas: 16
+  freq_GHz: 28.0
+  P_max_dBm: 30.0
+  noise_power_dBm: -90.0
+
+llm:
+  provider: "cerebras" # "cerebras", "openai", or "anthropic"
+  model: "llama3.1-70b"
+  temperature: 0.3
+  max_tokens: 2000
+
+rag:
+  embedding_model: "all-MiniLM-L6-v2"
+  knowledge_path: "data/rag_knowledge"
+  top_k: 3
+
+training:
+  n_episodes: 1000
+  fine_tune_steps: 100
+  llm_update_frequency: 50 # Call LLM every N episodes
+  batch_size: 64
+
+drl:
+  agent_type: "sac" # "sac" or "ppo"
+  hidden_dim: 256
+  lr: 0.0003
+  gamma: 0.99
+
+evaluation:
+  distances: [2, 4, 6, 8, 10, 12, 15, 18, 20, 23, 25]
+  n_runs: 5

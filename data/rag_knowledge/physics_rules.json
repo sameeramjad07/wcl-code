@@ -1,0 +1,56 @@
+[
+  {
+    "title": "Near-Field Beamfocusing",
+    "condition": "User distance < 10m (r < 0.5 * d_FF)",
+    "action": "Use sub-aperture (N_sub=1024) with near-field phase profile. Priority: Depth-focusing for DDM.",
+    "priority": "HIGH",
+    "aperture_size": 1024,
+    "strategy": "near_field",
+    "reward_weights": { "alpha": 1.0, "beta": 1.0, "gamma": 0.5 }
+  },
+  {
+    "title": "Transition Region",
+    "condition": "User distance 10-20m (0.5*d_FF < r < d_FF)",
+    "action": "Use medium aperture (N_sub=2048) with adaptive phase profile. Balance between focusing and steering.",
+    "priority": "MEDIUM",
+    "aperture_size": 2048,
+    "strategy": "adaptive",
+    "reward_weights": { "alpha": 1.0, "beta": 1.0, "gamma": 0.3 }
+  },
+  {
+    "title": "Far-Field Beamsteering",
+    "condition": "User distance > 20m (r > d_FF)",
+    "action": "Use full aperture (N_sub=4096) with far-field phase profile. Priority: Maximum array gain.",
+    "priority": "HIGH",
+    "aperture_size": 4096,
+    "strategy": "far_field",
+    "reward_weights": { "alpha": 1.0, "beta": 1.0, "gamma": 0.1 }
+  },
+  {
+    "title": "Mixed-Field DDM",
+    "condition": "One user near-field, one far-field",
+    "action": "Exploit depth separation. Use N_sub=2048. Focus on near user while maintaining far-user QoS.",
+    "priority": "MEDIUM",
+    "aperture_size": 2048,
+    "strategy": "mixed_ddm",
+    "reward_weights": { "alpha": 1.2, "beta": 0.8, "gamma": 0.4 }
+  },
+  {
+    "title": "Angular Conflict - Near Field",
+    "condition": "Both users near-field AND angular separation < 30°",
+    "action": "Increase interference penalty (γ=0.8). Use aperture tapering to reduce sidelobes.",
+    "priority": "HIGH",
+    "aperture_size": 1024,
+    "strategy": "near_field",
+    "reward_weights": { "alpha": 0.8, "beta": 0.8, "gamma": 0.8 }
+  },
+  {
+    "title": "Fairness Violation",
+    "condition": "Rate ratio > 3:1 OR min_rate < threshold",
+    "action": "Increase weight for weaker user (β=1.5). Reduce interference penalty.",
+    "priority": "HIGH",
+    "aperture_size": null,
+    "strategy": "fairness_boost",
+    "reward_weights": { "alpha": 0.7, "beta": 1.5, "gamma": 0.1 }
+  }
+]

@@ -1,0 +1,17 @@
+# System Configuration
+N_y: 64
+N_z: 64
+d_element: 0.5
+
+M_antennas: 16
+bs_antenna_spacing: 0.5
+P_max_dBm: 30.0
+
+freq_GHz: 28.0
+noise_power_dBm: -90.0
+
+# Positions will be set as numpy arrays in code
+# BS_position: [-10.0, 0.0, 0.0]
+# RIS_position: [0.0, 0.0, 0.0]
+
+target_SNR_dB: 10.0

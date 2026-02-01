@@ -1,0 +1,37 @@
+# DRL Training Configuration
+
+system:
+  N_y: 64
+  N_z: 64
+  M_antennas: 16
+  freq_GHz: 28.0
+  P_max_dBm: 30.0
+  noise_power_dBm: -90.0
+
+training:
+  n_episodes: 2000
+  batch_size: 64
+  save_interval: 100
+
+sac:
+  hidden_dim: 256
+  lr: 0.0003
+  gamma: 0.99
+  tau: 0.005
+  alpha: 0.2
+  auto_entropy_tuning: true
+
+ppo:
+  hidden_dim: 256
+  lr: 0.0003
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+  entropy_coef: 0.01
+  n_epochs: 10
+
+environment:
+  snapshot_type: "A"
+  reward_weights: [1.0, 1.0, 0.3] # [alpha, beta, gamma]
+  normalize_state: true

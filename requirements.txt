@@ -1,0 +1,37 @@
+# Core Dependencies
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Deep Learning & RL
+torch>=2.0.0
+gymnasium>=0.29.0
+stable-baselines3>=2.0.0
+
+# LLM & RAG
+cerebras_cloud_sdk
+langchain>=0.1.0
+langchain-community>=0.0.20
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+tiktoken>=0.5.0
+
+# Configuration
+pyyaml>=6.0
+python-dotenv>=1.0.0
+hydra-core>=1.3.0
+
+# Utilities
+tqdm>=4.65.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Visualization
+plotly>=5.14.0
+kaleido>=0.2.1
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
