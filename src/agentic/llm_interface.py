@@ -47,7 +47,6 @@ class LLMInterface:
         if self.provider == "cerebras":
             # Cerebras uses OpenAI-compatible API
             self.client = Cerebras(
-                base_url="https://api.cerebras.ai/v1",
                 api_key=api_key
             )
             self.model = model or "qwen-3-32b"

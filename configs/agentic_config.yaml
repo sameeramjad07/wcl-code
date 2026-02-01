@@ -10,7 +10,7 @@ system:
 
 llm:
   provider: "cerebras" # "cerebras", "openai", or "anthropic"
-  model: "llama3.1-70b"
+  model: "qwen-3-32b"
   temperature: 0.3
   max_tokens: 2000
 

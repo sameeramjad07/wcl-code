@@ -105,6 +105,7 @@ class PPOAgent:
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
         self.max_grad_norm = max_grad_norm
+        self.action_dim = action_dim
         
         # Actor-Critic network
         self.ac = ActorCritic(state_dim, action_dim, hidden_dim).to(device)

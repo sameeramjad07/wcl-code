@@ -153,6 +153,7 @@ class SACAgent:
         self.tau = tau
         self.alpha = alpha
         self.auto_entropy_tuning = auto_entropy_tuning
+        self.action_dim = action_dim
         
         # Policy network
         self.policy = GaussianPolicy(state_dim, action_dim, hidden_dim).to(device)

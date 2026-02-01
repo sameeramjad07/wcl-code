@@ -62,9 +62,22 @@ class RISEnvironment(gym.Env):
         
         # Determine active elements
         if aperture_mask is not None:
-            self.n_active = int(np.sum(aperture_mask))
-            self.active_indices = np.where(aperture_mask == 1)[0]
+            aperture_mask = np.asarray(aperture_mask)
+
+            # Ensure mask is flat and matches RIS size
+            if aperture_mask.ndim == 2:
+                aperture_mask = aperture_mask.flatten()
+
+            assert aperture_mask.size == config.N_total, (
+                f"Aperture mask size {aperture_mask.size} "
+                f"does not match RIS size {config.N_total}"
+            )
+
+            self.aperture_mask = aperture_mask.astype(int)
+            self.active_indices = np.where(self.aperture_mask == 1)[0]
+            self.n_active = len(self.active_indices)
         else:
+            self.aperture_mask = None
             self.n_active = config.N_total
             self.active_indices = np.arange(config.N_total)
         

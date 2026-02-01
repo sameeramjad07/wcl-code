@@ -120,11 +120,14 @@ def main():
                     strategy['reward_weights']['gamma']
                 )
             )
+
+            new_action_dim = env.action_space.shape[0]
             
             # Create/update DRL agent
-            if episode == 0:
+            if episode == 0 or new_action_dim != agent.action_dim:
+                print(f"[Agent Reset] Action dim changed → {new_action_dim}")
                 state_dim = env.observation_space.shape[0]
-                action_dim = env.action_space.shape[0]
+                action_dim = new_action_dim
                 
                 if config_dict['drl']['agent_type'] == 'sac':
                     agent = SACAgent(state_dim, action_dim, 
