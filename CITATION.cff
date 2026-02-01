@@ -1,0 +1,27 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: 'Agentic-RIS: LLM-Driven XL-RIS Optimization Framework'
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Muhammad Sameer
+    family-names: Amjad
+    email: proton7ve@gmail.com
+    affiliation: >-
+      National University of Sciences and Technology,
+      Pakistan
+    orcid: 'https://orcid.org/0009-0002-2789-5003'
+identifiers:
+  - type: url
+    value: 'https://github.com/sameeramjad07/wcl-code'
+repository-code: 'https://github.com/sameeramjad07/wcl-code'
+abstract: >-
+  A novel framework combining Large Language Models (LLMs)
+  with Deep Reinforcement Learning (DRL) for optimizing
+  Extra-Large Reconfigurable Intelligent Surfaces (XL-RIS)
+  in mixed near-field and far-field wireless communication
+  scenarios.

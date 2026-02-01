@@ -20,7 +20,7 @@ A novel framework combining Large Language Models (LLMs) with Deep Reinforcement
 ## 🏗️ Project Structure
 
 ```
-agentic-ris/
+wcl-code/
 ├── src/
 │   ├── core/                    # System model & channel computations
 │   ├── agents/                  # DRL agents (SAC, PPO)
@@ -41,10 +41,10 @@ agentic-ris/
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/agentic-ris.git
-cd agentic-ris
+git clone https://github.com/sameeramjad07/wcl-code.git
+cd wcl-code
 
-# Create virtual environment
+# Create virtual environment using venv or using Conda mini
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
@@ -64,7 +64,6 @@ cp .env.example .env
 
 ```
 CEREBRAS_API_KEY=your_cerebras_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here  # Optional fallback
 ```
 
 ### Running Experiments
@@ -155,20 +154,7 @@ where:
 
 ## 📝 Citation
 
-If you use this code in your research, please cite:
-
-```bibtex
-@article{agentic-ris-2026,
-  title={Agentic-RIS: LLM-Driven Optimization for Extra-Large RIS in Mixed-Field Scenarios},
-  author={Research Team},
-  journal={arXiv preprint},
-  year={2026}
-}
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+If you use this code in your research, please cite using the cite this repository option of Github on this repo.
 
 ## 🤝 Contributing
 
@@ -176,10 +162,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📧 Contact
 
-For questions or collaborations, please contact: research@example.com
+For questions or collaborations, please contact: proton7ve@gmail.com
 
 ## 🙏 Acknowledgments
 
 - UC Berkeley for SAC algorithm
-- Anthropic for Claude API
 - Cerebras for high-speed LLM inference
