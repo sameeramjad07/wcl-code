@@ -110,7 +110,8 @@ class ChannelModel:
         self.bs_antenna_positions[:, 2] = self.config.BS_position[2]
     
     def compute_swm_channel(self, source_positions: np.ndarray, 
-                           target_position: np.ndarray) -> np.ndarray:
+                        target_position: np.ndarray,
+                        is_near_field: bool = True) -> np.ndarray:
         """
         Compute Spherical Wavefront Model (SWM) channel.
         
@@ -120,6 +121,7 @@ class ChannelModel:
         Args:
             source_positions: Source antenna/element positions (N_source × 3)
             target_position: Target position (3,)
+            is_near_field: If True, use near-field model with 1/r² path loss
             
         Returns:
             h: Channel vector (N_source,) complex
@@ -128,10 +130,21 @@ class ChannelModel:
         delta = source_positions - target_position
         distances = np.linalg.norm(delta, axis=1)
         
-        # Spherical wavefront path loss: 1/r (amplitude) or 1/r² (power)
         # Adding small epsilon to avoid division by zero
         epsilon = 1e-10
-        path_loss_amplitude = self.config.wavelength / (4 * np.pi * (distances + epsilon))
+        
+        # Near-field: 1/r² path loss (power) = 1/r amplitude with correction
+        # Far-field: 1/r path loss (Friis equation)
+        if is_near_field:
+            # Near-field model: amplitude ~ 1/r, but we apply sqrt for power normalization
+            # Path loss in amplitude: sqrt(λ/(4πr)²) with Rayleigh distance correction
+            path_loss_amplitude = self.config.wavelength / (4 * np.pi * (distances + epsilon))
+            # Apply near-field correction factor
+            correction = np.sqrt(1 / (1 + (self.config.d_FF / (distances + epsilon))**2))
+            path_loss_amplitude = path_loss_amplitude * correction
+        else:
+            # Far-field Friis equation
+            path_loss_amplitude = self.config.wavelength / (4 * np.pi * (distances + epsilon))
         
         # Phase based on distance: exp(-j * 2π * r / λ)
         phase = -2 * np.pi * distances / self.config.wavelength
@@ -184,7 +197,14 @@ class ChannelModel:
         Returns:
             h_R: Channel vector (N_total,) complex
         """
-        h_R = self.compute_swm_channel(self.element_positions, user.position)
+        # Check if near-field
+        is_near_field = user.is_near_field(self.config.d_FF, self.config.RIS_position)
+        
+        h_R = self.compute_swm_channel(
+            self.element_positions, 
+            user.position,
+            is_near_field=is_near_field
+        )
         
         # Normalize
         h_R = h_R * np.sqrt(self.config.N_total)
