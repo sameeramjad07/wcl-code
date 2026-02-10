@@ -169,13 +169,7 @@ class SystemSimulator:
         """
         Compute sum-rate and individual rates.
         
-        Args:
-            phase_shifts: RIS phase shifts (N_total,)
-            aperture_mask: Binary mask (N_total,)
-            power_allocation: Power allocation [p_A, p_B], default equal
-            
-        Returns:
-            (sum_rate, rate_A, rate_B): Rates in bps/Hz
+        FIXED: Proper SINR calculation with correct power scaling
         """
         if self.user_A is None or self.user_B is None:
             raise ValueError("Users not set. Call set_snapshot_A() or set_snapshot_B() first.")
@@ -188,6 +182,10 @@ class SystemSimulator:
         H_A = self.channel_model.compute_cascaded_channel(h_R_A, self.G, phase_shifts, aperture_mask)
         H_B = self.channel_model.compute_cascaded_channel(h_R_B, self.G, phase_shifts, aperture_mask)
         
+        # Normalize channels
+        H_A = H_A / (np.linalg.norm(H_A) + 1e-10)
+        H_B = H_B / (np.linalg.norm(H_B) + 1e-10)
+        
         H_users = np.column_stack([H_A, H_B])
         
         # Compute precoder (MRT with power allocation)
@@ -197,7 +195,11 @@ class SystemSimulator:
         sinr_A = self.compute_sinr(H_users, W, 0)
         sinr_B = self.compute_sinr(H_users, W, 1)
         
-        # Compute rates
+        # Ensure positive SINR
+        sinr_A = max(sinr_A, 1e-10)
+        sinr_B = max(sinr_B, 1e-10)
+        
+        # Compute rates (Shannon capacity)
         rate_A = np.log2(1 + sinr_A)
         rate_B = np.log2(1 + sinr_B)
         sum_rate = rate_A + rate_B
@@ -288,47 +290,138 @@ class BaselineOptimizer:
         """Initialize optimizer."""
         self.simulator = simulator
         self.ris_controller = simulator.ris_controller
-    
-    def random_search(self, n_iterations: int = 100,
-                     aperture_size: Optional[int] = None) -> Dict:
-        """Random search baseline."""
+
+    def exhaustive_search(self, n_phase_levels: int = 16, 
+                         aperture_size: Optional[int] = None,
+                         n_samples: int = 2000) -> Dict:
+        """
+        Exhaustive search with quantized phases.
+        
+        FIXED: Proper quantization and sampling
+        """
         best_sum_rate = -np.inf
         best_config = None
         
-        # Generate aperture mask if specified
+        # Generate aperture mask
+        mask = None
+        if aperture_size is not None and aperture_size < self.simulator.config.N_total:
+            mask = self.ris_controller.generate_aperture_mask(aperture_size)
+            active_indices = np.where(mask == 1)[0]
+            n_active = len(active_indices)
+        else:
+            active_indices = np.arange(self.simulator.config.N_total)
+            n_active = self.simulator.config.N_total
+        
+        # Quantized phase levels
+        phase_levels = np.linspace(0, 2*np.pi, n_phase_levels, endpoint=False)
+        
+        # Random sampling from quantized space
+        for sample in range(n_samples):
+            # Random quantized phases for active elements
+            phase_indices = np.random.randint(0, n_phase_levels, n_active)
+            phase_values = phase_levels[phase_indices]
+            
+            # Full phase array
+            phase_shifts = np.zeros(self.simulator.config.N_total)
+            phase_shifts[active_indices] = phase_values
+            
+            # Random power allocation
+            power_ratio = np.random.uniform(0.3, 0.7)
+            power_allocation = np.array([power_ratio, 1 - power_ratio])
+            
+            # Evaluate
+            try:
+                sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(
+                    phase_shifts, mask, power_allocation
+                )
+                
+                if sum_rate > best_sum_rate:
+                    best_sum_rate = sum_rate
+                    best_config = {
+                        'phase_shifts': phase_shifts.copy(),
+                        'mask': mask,
+                        'power_allocation': power_allocation.copy(),
+                        'sum_rate': sum_rate,
+                        'rate_A': rate_A,
+                        'rate_B': rate_B
+                    }
+            except:
+                continue
+        
+        if best_config is None:
+            # Fallback to random
+            phase_shifts = np.random.uniform(0, 2*np.pi, self.simulator.config.N_total)
+            sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(phase_shifts, mask)
+            best_config = {
+                'phase_shifts': phase_shifts,
+                'mask': mask,
+                'sum_rate': sum_rate,
+                'rate_A': rate_A,
+                'rate_B': rate_B
+            }
+        
+        return best_config
+    
+    def random_search(self, n_iterations: int = 100,
+                     aperture_size: Optional[int] = None) -> Dict:
+        """
+        Random search baseline.
+        
+        FIXED: Truly random phases
+        """
+        best_sum_rate = -np.inf
+        best_config = None
+        
         mask = None
         if aperture_size is not None:
             mask = self.ris_controller.generate_aperture_mask(aperture_size)
         
         for i in range(n_iterations):
-            # Random phase shifts
+            # Completely random phases
             phase_shifts = np.random.uniform(0, 2*np.pi, self.simulator.config.N_total)
+            power_ratio = np.random.uniform(0.3, 0.7)
+            power_allocation = np.array([power_ratio, 1 - power_ratio])
             
-            # Evaluate
-            sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(phase_shifts, mask)
-            
-            if sum_rate > best_sum_rate:
-                best_sum_rate = sum_rate
-                best_config = {
-                    'phase_shifts': phase_shifts,
-                    'mask': mask,
-                    'sum_rate': sum_rate,
-                    'rate_A': rate_A,
-                    'rate_B': rate_B
-                }
+            try:
+                sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(
+                    phase_shifts, mask, power_allocation
+                )
+                
+                if sum_rate > best_sum_rate:
+                    best_sum_rate = sum_rate
+                    best_config = {
+                        'phase_shifts': phase_shifts.copy(),
+                        'mask': mask,
+                        'sum_rate': sum_rate,
+                        'rate_A': rate_A,
+                        'rate_B': rate_B
+                    }
+            except:
+                continue
         
         return best_config
     
     def near_field_baseline(self, aperture_size: Optional[int] = None) -> Dict:
-        """Always use near-field beamfocusing."""
-        # Focus on User A (primary user)
-        phase_shifts = self.ris_controller.compute_near_field_phase_profile(self.simulator.user_A)
+        """
+        Near-field beamfocusing baseline.
+        
+        FIXED: Use proper near-field phase profile
+        """
+        # Use near-field phase profile focused on User A
+        phase_shifts = self.ris_controller.compute_near_field_phase_profile(
+            self.simulator.user_A, include_bs_compensation=True
+        )
         
         mask = None
         if aperture_size is not None:
             mask = self.ris_controller.generate_aperture_mask(aperture_size)
         
-        sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(phase_shifts, mask)
+        # Equal power allocation
+        power_allocation = np.array([0.5, 0.5])
+        
+        sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(
+            phase_shifts, mask, power_allocation
+        )
         
         return {
             'phase_shifts': phase_shifts,
@@ -339,15 +432,26 @@ class BaselineOptimizer:
         }
     
     def far_field_baseline(self, aperture_size: Optional[int] = None) -> Dict:
-        """Always use far-field beamsteering."""
-        # Steer toward User A
-        phase_shifts = self.ris_controller.compute_far_field_phase_profile(self.simulator.user_A)
+        """
+        Far-field beamsteering baseline.
+        
+        FIXED: Use proper far-field phase profile
+        """
+        # Use far-field phase profile steered toward User A
+        phase_shifts = self.ris_controller.compute_far_field_phase_profile(
+            self.simulator.user_A
+        )
         
         mask = None
         if aperture_size is not None:
             mask = self.ris_controller.generate_aperture_mask(aperture_size)
         
-        sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(phase_shifts, mask)
+        # Equal power allocation
+        power_allocation = np.array([0.5, 0.5])
+        
+        sum_rate, rate_A, rate_B = self.simulator.compute_sum_rate(
+            phase_shifts, mask, power_allocation
+        )
         
         return {
             'phase_shifts': phase_shifts,

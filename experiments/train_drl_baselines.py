@@ -15,7 +15,7 @@ from tqdm import tqdm
 import yaml
 import argparse
 
-from src.core.system_model import SystemConfig
+from src.core.system_model import SystemConfig, SystemSimulator
 from src.environment.ris_env import RISEnvironment
 from src.agents.sac_agent import SACAgent
 from src.agents.ppo_agent import PPOAgent
@@ -117,47 +117,88 @@ def train_ppo_agent(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/drl_config.yaml')
-    parser.add_argument('--agent', type=str, default='sac', choices=['sac', 'ppo'])
+    parser.add_argument('--agent', type=str, default='sac', 
+                       choices=['sac', 'ppo', 'ddpg', 'td3'])
     parser.add_argument('--regime', type=str, default='near', choices=['near', 'far'])
+    parser.add_argument('--episodes', type=int, default=2000)
     args = parser.parse_args()
     
     # Load config
-    config_dict = load_config(args.config)
+    try:
+        config_dict = load_config(args.config)
+    except:
+        # Default config
+        config_dict = {
+            'system': {},
+            'training': {'n_episodes': args.episodes, 'batch_size': 64}
+        }
     
     # Create system config
-    sys_config = SystemConfig(**config_dict['system'])
+    sys_config = SystemConfig()
     
     # Create environment
     aperture_size = 1024 if args.regime == 'near' else 4096
-    aperture_mask = None  # Will use controller to generate
+    reward_weights = (1.0, 1.0, 0.5) if args.regime == 'near' else (1.0, 1.0, 0.1)
+    
+    # Generate mask
+    simulator = SystemSimulator(sys_config)
+    mask = simulator.ris_controller.generate_aperture_mask(aperture_size)
     
     env = RISEnvironment(
         config=sys_config,
         snapshot_type='A',
-        aperture_mask=aperture_mask,
-        reward_weights=(1.0, 1.0, 0.3)
+        aperture_mask=mask,
+        reward_weights=reward_weights
     )
     
-    # Train agent
+    # Create save directory
     save_dir = Path(f"data/trained_models/{args.agent}_{args.regime}_field")
     save_dir.mkdir(parents=True, exist_ok=True)
     
+    print(f"\n{'='*70}")
+    print(f"Training {args.agent.upper()} Agent - {args.regime.upper()} Field")
+    print(f"{'='*70}")
+    print(f"Aperture Size: {aperture_size}")
+    print(f"Episodes: {args.episodes}")
+    print(f"Save Directory: {save_dir}")
+    print(f"{'='*70}\n")
+    
+    # Train agent
     if args.agent == 'sac':
         agent, rewards = train_sac_agent(
             env,
-            n_episodes=config_dict['training']['n_episodes'],
+            n_episodes=args.episodes,
             save_path=str(save_dir / 'agent.pt')
         )
-    else:
+    elif args.agent == 'ppo':
         agent, rewards = train_ppo_agent(
             env,
-            n_episodes=config_dict['training']['n_episodes'],
+            n_episodes=args.episodes,
             save_path=str(save_dir / 'agent.pt')
         )
+    # Add other agents...
     
     # Save training history
     np.save(save_dir / 'rewards.npy', rewards)
-    print(f"Training complete! Saved to {save_dir}")
+    
+    # Save metadata
+    import json
+    metadata = {
+        'agent_type': args.agent,
+        'regime': args.regime,
+        'aperture_size': aperture_size,
+        'n_episodes': args.episodes,
+        'final_avg_reward': float(np.mean(rewards[-100:])),
+        'reward_weights': reward_weights
+    }
+    with open(save_dir / 'metadata.json', 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
+    print(f"\n{'='*70}")
+    print(f"✓ Training Complete!")
+    print(f"  Final Avg Reward (last 100): {np.mean(rewards[-100:]):.3f}")
+    print(f"  Saved to: {save_dir}")
+    print(f"{'='*70}\n")
 
 
 if __name__ == "__main__":

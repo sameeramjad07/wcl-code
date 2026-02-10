@@ -158,32 +158,34 @@ class ChannelModel:
         """
         Compute BS-to-RIS channel matrix G using SWM.
         
-        Returns:
-            G: Channel matrix (N_total × M_antennas) complex
+        FIXED: Proper Rayleigh fading and normalization
         """
-        # Each column is channel from one BS antenna to all RIS elements
         G = np.zeros((self.config.N_total, self.config.M_antennas), dtype=complex)
         
         for m in range(self.config.M_antennas):
-            # SWM from m-th BS antenna to all RIS elements
             bs_antenna_pos = self.bs_antenna_positions[m, :]
             
-            # Distances from BS antenna to RIS elements
+            # Distances
             delta = self.element_positions - bs_antenna_pos
             distances = np.linalg.norm(delta, axis=1)
             
-            # SWM channel with path loss
-            path_loss = self.config.wavelength / (4 * np.pi * distances)
+            # Path loss
+            path_loss = self.config.wavelength / (4 * np.pi * (distances + 1e-10))
+            
+            # Phase
             phase = -2 * np.pi * distances / self.config.wavelength
             
-            # Add Rayleigh fading for realistic wireless channel
-            rayleigh = (np.random.randn(self.config.N_total) + 
-                       1j * np.random.randn(self.config.N_total)) / np.sqrt(2)
+            # Rayleigh fading (complex Gaussian)
+            rayleigh_real = np.random.randn(self.config.N_total)
+            rayleigh_imag = np.random.randn(self.config.N_total)
+            rayleigh = (rayleigh_real + 1j * rayleigh_imag) / np.sqrt(2)
             
+            # Channel
             G[:, m] = path_loss * np.exp(1j * phase) * rayleigh
         
-        # Normalize for numerical stability
-        G = G * np.sqrt(self.config.N_total / 10)  # Scale down slightly
+        # Normalize entire matrix
+        norm_factor = np.sqrt(np.sum(np.abs(G)**2) / (self.config.N_total * self.config.M_antennas))
+        G = G / (norm_factor + 1e-10)
         
         return G
     
@@ -191,23 +193,39 @@ class ChannelModel:
         """
         Compute RIS-to-user channel using SWM.
         
-        Args:
-            user: User object
-            
-        Returns:
-            h_R: Channel vector (N_total,) complex
+        FIXED: Proper path loss model
         """
+        # Compute distances
+        delta = self.element_positions - user.position
+        distances = np.linalg.norm(delta, axis=1)
+        
+        # Small epsilon to avoid division by zero
+        epsilon = 1e-10
+        
         # Check if near-field
         is_near_field = user.is_near_field(self.config.d_FF, self.config.RIS_position)
         
-        h_R = self.compute_swm_channel(
-            self.element_positions, 
-            user.position,
-            is_near_field=is_near_field
-        )
+        if is_near_field:
+            # Near-field: More accurate spherical wave model
+            # Path loss includes both distance and focusing effects
+            path_loss_amplitude = self.config.wavelength / (4 * np.pi * (distances + epsilon))
+            
+            # Apply near-field correction
+            d_ratio = distances / (self.config.d_FF + epsilon)
+            correction = 1 / np.sqrt(1 + d_ratio**2)
+            path_loss_amplitude = path_loss_amplitude * correction
+        else:
+            # Far-field: Standard Friis equation
+            path_loss_amplitude = self.config.wavelength / (4 * np.pi * (distances + epsilon))
         
-        # Normalize
-        h_R = h_R * np.sqrt(self.config.N_total)
+        # Phase term
+        phase = -2 * np.pi * distances / self.config.wavelength
+        
+        # Channel vector
+        h_R = path_loss_amplitude * np.exp(1j * phase)
+        
+        # Normalize by sqrt(N) for power normalization
+        h_R = h_R * np.sqrt(self.config.N_total) / np.sqrt(np.sum(np.abs(h_R)**2) + epsilon)
         
         return h_R
     

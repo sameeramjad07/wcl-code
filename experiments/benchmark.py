@@ -13,6 +13,9 @@ from typing import Dict, Optional
 from pathlib import Path
 import json
 from tqdm import tqdm
+from src.environment.ris_env import RISEnvironment
+from src.agents.sac_agent import SACAgent
+from src.agents.ppo_agent import PPOAgent
 
 from src.core.system_model import SystemConfig, SystemSimulator, BaselineOptimizer
 from src.utils.visualization import (
@@ -83,6 +86,65 @@ def exhaustive_search_quantized(
             }
     
     return best_config
+
+def load_trained_agent(agent_type: str, regime: str, env):
+    """Load a trained DRL agent."""
+    model_path = Path(f"data/trained_models/{agent_type}_{regime}_field/agent.pt")
+    
+    if not model_path.exists():
+        print(f"Warning: Model not found at {model_path}")
+        return None
+    
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+    
+    if agent_type == 'sac':
+        agent = SACAgent(state_dim, action_dim)
+    elif agent_type == 'ppo':
+        agent = PPOAgent(state_dim, action_dim)
+    else:
+        return None
+    
+    try:
+        agent.load(str(model_path))
+        print(f"✓ Loaded {agent_type}_{regime}_field model")
+        return agent
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
+
+
+def evaluate_drl_agent(agent, simulator, distance, aperture_mask):
+    """Evaluate a trained DRL agent at a specific distance."""
+    if agent is None:
+        return None
+    
+    # Create environment
+    env = RISEnvironment(
+        config=simulator.config,
+        snapshot_type='A',
+        aperture_mask=aperture_mask,
+        reward_weights=(1.0, 1.0, 0.3)
+    )
+    
+    # Reset to specific distance
+    state, _ = env.reset(options={'r_A': distance})
+    
+    # Get action from trained agent
+    if hasattr(agent, 'select_action'):
+        action = agent.select_action(state, deterministic=True)
+    else:
+        action, _, _ = agent.select_action(state, deterministic=True)
+    
+    # Execute
+    _, _, _, _, info = env.step(action)
+    
+    return {
+        'sum_rate': info['sum_rate'],
+        'rate_A': info['rate_A'],
+        'rate_B': info['rate_B']
+    }
+
 
 def benchmark_all_methods():
     """Run comprehensive benchmark."""
